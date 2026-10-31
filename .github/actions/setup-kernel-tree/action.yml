@@ -1,0 +1,33 @@
+name: setup-kernel-tree
+description: Clone the kernel tree, with PAT support for the private repo.
+inputs:
+  repo_url:
+    description: KERNEL_TREE_1 value, or "private" to clone the private kernel repo.
+    required: true
+  branch:
+    description: Branch or tag to clone.
+    required: true
+  token:
+    description: GitHub token used when repo_url is "private".
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Checkout Kernel via PAT
+      shell: bash
+      env:
+        GH_PAT: ${{ inputs.token }}
+        REPO_INPUT: ${{ inputs.repo_url }}
+        BRANCH: ${{ inputs.branch }}
+      run: |
+        if [[ "${REPO_INPUT}" == "private" ]]; then
+          git clone --depth=1 --branch "${BRANCH}" \
+            "https://x-access-token:${GH_PAT}@github.com/re-noroi/FD-private.git" kernel_tree
+          git -C kernel_tree remote set-url origin "https://github.com/re-noroi/FD-private.git"
+        elif [[ "${REPO_INPUT}" == http* ]]; then
+          git clone --depth=1 --branch "${BRANCH}" "${REPO_INPUT}" kernel_tree
+        else
+          echo "bad repo_url: '${REPO_INPUT}' (expected \"private\" or an http(s) URL)" >&2
+          exit 1
+        fi

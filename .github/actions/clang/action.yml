@@ -1,0 +1,53 @@
+name: clang-toolchain
+description: Restore the clang toolchain cache, download/extract on a miss, optionally save it.
+inputs:
+  compiler:
+    description: COMPILER choice (neutron|r547379|r574158|r614150); empty means neutron.
+    required: false
+    default: ''
+  save:
+    description: Save the cache after a miss. Enable in exactly one job per run.
+    required: false
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Restore Clang cache
+      id: restore
+      uses: actions/cache/restore@v4
+      with:
+        path: clang
+        key: clang-${{ inputs.compiler || 'neutron' }}-${{ runner.os }}-v1
+
+    - name: Download & Extract
+      if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        if [[ -z "${{ inputs.compiler }}" || "${{ inputs.compiler }}" == "neutron" ]]; then
+          wget https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/06092026/neutron-clang-06092026.tar.zst -O clang.tar.zst
+          mkdir clang
+          unzstd -d clang.tar.zst
+          tar -xf clang.tar -C clang
+        elif [[ "${{ inputs.compiler }}" == "r547379" ]]; then
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/70a12c4fe88940ab2b0e6d763492dffa2f07e15a/clang-r547379.tar.gz -O clang.tar.gz
+          mkdir clang
+          tar -xf clang.tar.gz -C clang
+        elif [[ "${{ inputs.compiler }}" == "r574158" ]]; then
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/ebcc6c3bef363bc539ea39f45b6abae1dce6ff1a/clang-r574158.tar.gz -O clang.tar.gz
+          mkdir clang
+          tar -xf clang.tar.gz -C clang
+        elif [[ "${{ inputs.compiler }}" == "r614150" ]]; then
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/3b86e40facfff1eab4065614255d573293c10373/clang-r614150.tar.gz -O clang.tar.gz
+          mkdir clang
+          tar -xf clang.tar.gz -C clang
+        else
+          echo "unknown COMPILER: '${{ inputs.compiler }}'" >&2
+          exit 1
+        fi
+
+    - name: Save Clang cache
+      if: inputs.save == 'true' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: clang
+        key: clang-${{ inputs.compiler || 'neutron' }}-${{ runner.os }}-v1
